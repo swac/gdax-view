@@ -67,7 +67,7 @@ let make = (~message, _children) => {
       (
         ReasonReact.arrayToElement(
           Array.map(
-            (i) => <p> (ReasonReact.stringToElement(i.id)) </p>,
+            (i) => <Product id=i.id display_name=i.display_name />,
             _self.state
           )
         )
