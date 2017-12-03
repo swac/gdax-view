@@ -17,7 +17,13 @@ type orderBook = {
   asks: array(order)
 };
 
+type state = {
+  orderBook,
+  isOpen: bool
+};
+
 type action =
+  | ToggleOpen
   | FetchOrders(orderBook);
 
 let parseOrder = (json: array(Js.Json.t)) : order => {
@@ -51,9 +57,9 @@ let make =
          ~margin_enabled, */
       _children
     ) => {
-  let click = (event, self) =>
-    if (Array.length(self.ReasonReact.state.bids) == 0
-        || Array.length(self.ReasonReact.state.asks) == 0) {
+  let click = (event, self) => {
+    if (Array.length(self.ReasonReact.state.orderBook.bids) == 0
+        || Array.length(self.ReasonReact.state.orderBook.asks) == 0) {
       Js.Promise.(
         Fetch.fetch("https://api.gdax.com/products/" ++ id ++ "/book?level=2")
         |> then_(Fetch.Response.json)
@@ -86,16 +92,20 @@ let make =
       )
       |> ignore
     };
+    self.ReasonReact.reduce((_) => ToggleOpen, ()) |> ignore
+  };
   {
     ...component,
-    initialState: () => {bids: [||], asks: [||]},
-    reducer: (action, _) =>
+    initialState: () => {orderBook: {bids: [||], asks: [||]}, isOpen: false},
+    reducer: (action, state) =>
       switch action {
-      | FetchOrders(orders) => ReasonReact.Update(orders)
+      | ToggleOpen => ReasonReact.Update({...state, isOpen: ! state.isOpen})
+      | FetchOrders(orders) =>
+        ReasonReact.Update({...state, isOpen: true, orderBook: orders})
       },
     render: (_self) => {
       let renderOrders = (orders) =>
-        if (Array.length(orders) == 0) {
+        if (! _self.state.isOpen) {
           ReasonReact.nullElement
         } else {
           <ol>
@@ -109,8 +119,8 @@ let make =
             )
           </ol>
         };
-      let bidList = renderOrders(_self.state.bids);
-      let askList = renderOrders(_self.state.asks);
+      let bidList = renderOrders(_self.state.orderBook.bids);
+      let askList = renderOrders(_self.state.orderBook.asks);
       <div>
         <p onClick=(_self.handle(click))>
           (ReasonReact.stringToElement(display_name))
